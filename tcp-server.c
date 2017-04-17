@@ -118,25 +118,20 @@ void consumeClient(void *args){
     printf("\nCONSUME CLIENT FUCNTION\n");
 
     struct threadInfo* thread =  (struct threadInfo*) args;
-
     struct epoll_event events[MAX_EVENTS];
     int nfds;
 
     while (_keepAccepting) {
-        printf("  Thread called epoll_wait on epoll id; %i\n", thread->epollfd);
+        printf("  Epoll %i is waiting\n", thread->epollfd);
         nfds = epoll_wait(thread->epollfd, events, MAX_EVENTS, -1);
-        printf("  GOT CLIENT! %i\n", thread->epollfd);
+        printf("  Epoll %i got %i events\n", thread->epollfd, nfds);
         for(int i = 0; i < nfds; ++i){
             events[i].data.fd;
             struct clientInfo* cInfo = (struct clientInfo*) events[i].data.ptr;
-            //TODO: You set the events[i].data.ptr in the main thread when you accept!
-
+            printf("  Epoll %i got a request from %i\n", thread->epollfd, cInfo->clientfd);
             handle_client(cInfo->clientfd, (struct clientInfo*) events[i].data.ptr);
-
         }
-
     }
-
 }
 
 
@@ -238,8 +233,9 @@ int init_tcp(char* path, char* port, int verbose, int threadNo, int queueSize) {
 
     //--------------------------LOOP LOOKING FOR CLIENTS--------------------------------//
 
+    int counter = 0;
     for (;;) {
-        printf("\nCALLING EPOLL_WAIT\n");
+        printf("\nMAIN EPOLL IS WAITING\n");
         nfds = epoll_wait(epollfd, events, MAX_EVENTS, -1);
         if (nfds == -1) {
             perror("epoll_wait");
@@ -249,6 +245,8 @@ int init_tcp(char* path, char* port, int verbose, int threadNo, int queueSize) {
         struct sockaddr_storage client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
         int conn_sock = accept(sock, (struct sockaddr *) &client_addr, &client_addr_len);
+        printf("\n\n\nCLIENT COUNTER: %i\n\n\n", ++counter);
+
         if (conn_sock == -1) {
 
             if (errno == EINTR) { /* this means we were interrupted by our signal handler */
@@ -261,29 +259,26 @@ int init_tcp(char* path, char* port, int verbose, int threadNo, int queueSize) {
             perror("accept");
             continue;
         }
-        printf("  n");
 
         //-------------------SET CLIENT TO NON BLOCKING----------------//
-        printf("  Setting client port as a non-blocking call\n");
         set_blocking(conn_sock, 0);
 
         //----------------GETTING THE NEXT THREAD INDEX----------------//
         int poller = nextThreadIndex%_threadNumber;
         nextThreadIndex = poller + 1;
-        printf("  Thread with index %i is getting the client\n", poller);
 
         threads[poller].epollfd;
-        ev.events = EPOLLIN | EPOLLET;
+        ev.events = EPOLLIN;
         ev.data.fd = conn_sock;
 
         //-------------CREATE AND INITIALIZE CLIENT INFO---------------//
-        struct clientInfo cInfo;
-        resetParsingHeader(&cInfo.r);
-        resetParsingHeaderFlags(&cInfo.r);
-        cInfo.clientfd = conn_sock;
+        struct clientInfo* cInfo = malloc(sizeof(struct clientInfo));
+        resetParsingHeader(&cInfo->r);
+        resetParsingHeaderFlags(&cInfo->r);
+        cInfo->clientfd = conn_sock;
 
         //------------------ATTACH CLIENT INFO TO EVENT---------------//
-        ev.data.ptr = (void*)&cInfo;
+        ev.data.ptr = (void*)cInfo;
 
         if (epoll_ctl(threads[poller].epollfd, EPOLL_CTL_ADD, conn_sock,
                       &ev) == -1) {
@@ -335,7 +330,7 @@ void exhaustReceivingData(int sock, char *buffer){
         }
         if (bytes_read < 0) {
             if ((errno == EAGAIN || EWOULDBLOCK)) { /* this means we were interrupted by our signal handler */
-                printf("\nEAGAIN || EWOULDBLOCK\n");
+                //printf("\nEAGAIN || EWOULDBLOCK\n");
                 break;
             }
             perror("recv");
@@ -370,7 +365,6 @@ void separateRequests(char* buffer, char** separatedRequests, char* incompleteRe
         *bufferPtr = '\0';
         separatedRequests[i] = malloc(sizeof(char)*BUFFER_MAX);
         strcpy(separatedRequests[i], buffer);
-        printf("  Request No. %i:\n%s\n", i, separatedRequests[i]);
         buffer = bufferPtr + 4;
     }
 
@@ -394,11 +388,9 @@ void handle_client(int sock, struct clientInfo  *c_info) {
     exhaustReceivingData(sock, &buffer[0]);
     int requestNo = countSeparateRequests(&buffer[0]);
     separatedRequests = malloc(sizeof(char*) * requestNo);
-    printf("  There are %i requests in the receiving buffer\n", requestNo);
     separateRequests(&buffer[0], separatedRequests, incompleteRequest, requestNo);
 
     //--------------------IF THERE IS NO FRAGMENTED LINE RESET REQUEST VALUES-------------------//
-    printf("\nCHECKPOINT 1\n");
     if(!c_info->r.fragmented_line_waiting){
         resetParsingHeader(&c_info->r);
         resetParsingHeaderFlags(&c_info->r);
@@ -406,40 +398,32 @@ void handle_client(int sock, struct clientInfo  *c_info) {
 
 
     //---------------------------------BEGIN PARSING--------------------------------------------//
-    printf("\nCHECKPOINT 2\n");
     for(int i = 0; i < requestNo; ++i){
 
-        printf("\n  CHECKPOINT 2A\n");
         c_info->r.is_header_ready = 1;
-        printf("\n  CHECKPOINT 2 TEST: %s\n", separatedRequests[i]);
         parseHeader(separatedRequests[i], &c_info->r);
         c_info->r.is_header_parsed = 1;
 
 
         //--------------------------IF POST REQUEST THEN PARSE BODY-----------------------------//
-        printf("\n  CHECKPOINT 2B\n");
         if(c_info->r.rl.type[0] == 'P'){
             parseBody(separatedRequests[i] + 4, &c_info->r);
             c_info->r.is_body_parsed = 1;
         }
 
-        printf("\n  CHECKPOINT 2C\n");
         sanitize_path(&c_info->r);
-        printf("  Executing request!\n");
+
         executeRequest(&c_info->r, sock);
         resetParsingHeader(&c_info->r);
         resetParsingHeaderFlags(&c_info->r);
     }
 
-    printf("\nCHECKPOINT 3\n");
     if(incompleteRequest){
         printf("  Header is not complete!\n");
         c_info->r.is_header_ready = 0;
         parseHeader(incompleteRequest, &c_info->r);
         c_info->r.fragmented_line_waiting = 1;
     }
-
-    if(verbose_flag) printf("PARSED HEADER: \n  REQUEST TYPE: %s\n", c_info->r.rl.type);
 }
 
 int create_server_socket(char* port, int protocol) {
