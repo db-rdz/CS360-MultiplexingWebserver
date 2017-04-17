@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 
 
 	int c;
-	while ((c = getopt(argc, argv, "vp:c:t:q:")) != -1) {
+	while ((c = getopt(argc, argv, "vp:c:t:")) != -1) {
 		switch (c) {
 			case 'v':
 				verbose_flag = 1;
@@ -43,9 +43,6 @@ int main(int argc, char* argv[]) {
             case 't':
                 threads = atoi(optarg);
                 break;
-            case 'q':
-                queueSize = atoi(optarg);
-				break;
 			case '?':
 				if (optopt == 'p' || optopt == 'c') {
 					fprintf(stderr, "Option -%c requires an argument\n", optopt);

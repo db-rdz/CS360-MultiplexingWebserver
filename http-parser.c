@@ -5,6 +5,11 @@
 #include "http-parser.h"
 
 void stripQueryString(struct request *r){
+
+    if(r->rl.path == NULL){
+        return;
+    }
+
     r->vars_entries = 0;
 
     char *queryString = strchr(r->rl.path, '?');
@@ -28,6 +33,10 @@ void stripQueryString(struct request *r){
 void sanitize_path(struct request *r){
     //DEFAULT HOST
     char host[255] = "www";
+
+    if(r->rl.path == NULL){
+        return;
+    }
 
     stripQueryString(r);
 
