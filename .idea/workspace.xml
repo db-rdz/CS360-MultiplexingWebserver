@@ -29,8 +29,8 @@
       <file leaf-file-name="tcp-server.c" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/tcp-server.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="166">
-              <caret line="275" column="28" lean-forward="false" selection-start-line="275" selection-start-column="28" selection-end-line="275" selection-end-column="28" />
+            <state relative-caret-position="-38">
+              <caret line="294" column="0" lean-forward="true" selection-start-line="294" selection-start-column="0" selection-end-line="294" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -39,8 +39,8 @@
       <file leaf-file-name="http-parser.c" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/http-parser.c">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="202">
-              <caret line="139" column="43" lean-forward="false" selection-start-line="139" selection-start-column="32" selection-end-line="139" selection-end-column="43" />
+            <state relative-caret-position="302">
+              <caret line="143" column="38" lean-forward="false" selection-start-line="143" selection-start-column="15" selection-end-line="143" selection-end-column="38" />
               <folding />
             </state>
           </provider>
@@ -69,8 +69,8 @@
       <file leaf-file-name="http-parser.h" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/http-parser.h">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="611">
-              <caret line="80" column="11" lean-forward="false" selection-start-line="80" selection-start-column="11" selection-end-line="80" selection-end-column="11" />
+            <state relative-caret-position="135">
+              <caret line="26" column="0" lean-forward="false" selection-start-line="26" selection-start-column="0" selection-end-line="28" selection-end-column="20" />
               <folding />
             </state>
           </provider>
@@ -103,18 +103,24 @@
       <find>buildResponseHeader</find>
       <find>NOT_IMPL</find>
       <find>clientInfo</find>
-      <find>handle_client</find>
       <find>client_hostname</find>
       <find>consumeClient</find>
       <find>NULL</find>
       <find>client_port</find>
-      <find>exhaustReceivingData</find>
       <find>There are</find>
-      <find>separateRequests</find>
       <find>PARSING HEADER</find>
       <find>parseHeader</find>
       <find>epoll</find>
       <find>threadInfo</find>
+      <find>c_info</find>
+      <find>separateRequests</find>
+      <find>executeGet</find>
+      <find>sendResponse</find>
+      <find>exhaustReceivingData</find>
+      <find>handle_client</find>
+      <find>Final path of file is:</find>
+      <find>INCOMPLETE LINE:</find>
+      <find>fragmented_line_waiting</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -405,7 +411,7 @@
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="44065000" />
+    <option name="totallyTimeSpent" value="49091000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="27" width="1366" height="741" extended-state="6" />
@@ -839,26 +845,26 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/http-parser.h">
+    <entry file="file://$PROJECT_DIR$/http-parser.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="611">
-          <caret line="80" column="11" lean-forward="false" selection-start-line="80" selection-start-column="11" selection-end-line="80" selection-end-column="11" />
+        <state relative-caret-position="302">
+          <caret line="143" column="38" lean-forward="false" selection-start-line="143" selection-start-column="15" selection-end-line="143" selection-end-column="38" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/http-parser.c">
+    <entry file="file://$PROJECT_DIR$/http-parser.h">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="202">
-          <caret line="139" column="43" lean-forward="false" selection-start-line="139" selection-start-column="32" selection-end-line="139" selection-end-column="43" />
+        <state relative-caret-position="135">
+          <caret line="26" column="0" lean-forward="false" selection-start-line="26" selection-start-column="0" selection-end-line="28" selection-end-column="20" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/tcp-server.c">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="166">
-          <caret line="275" column="28" lean-forward="false" selection-start-line="275" selection-start-column="28" selection-end-line="275" selection-end-column="28" />
+        <state relative-caret-position="-38">
+          <caret line="294" column="0" lean-forward="true" selection-start-line="294" selection-start-column="0" selection-end-line="294" selection-end-column="0" />
           <folding />
         </state>
       </provider>

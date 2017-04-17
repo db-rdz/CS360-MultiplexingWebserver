@@ -61,7 +61,7 @@ void resetParsingHeader(struct request *r);
 void parseConfig(char *filename);
 void handle_sigchld(int sig);
 int create_server_socket(char* port, int protocol);
-void handle_client(int sock, struct clientInfo  *c_info);
+void handle_client(int sock, struct clientInfo  *c_info, int epoll);
 
 int sem_wait(sem_t *sem);
 int sem_post(sem_t *sem);
@@ -129,7 +129,7 @@ void consumeClient(void *args){
             events[i].data.fd;
             struct clientInfo* cInfo = (struct clientInfo*) events[i].data.ptr;
             printf("  Epoll %i got a request from %i\n", thread->epollfd, cInfo->clientfd);
-            handle_client(cInfo->clientfd, (struct clientInfo*) events[i].data.ptr);
+            handle_client(cInfo->clientfd, (struct clientInfo*) events[i].data.ptr, thread->epollfd);
         }
     }
 }
@@ -292,6 +292,18 @@ int init_tcp(char* path, char* port, int verbose, int threadNo, int queueSize) {
 }
 
 void resetParsingHeader(struct request *r){
+
+    memset(r->incompleteLine, 0, sizeof(r->incompleteLine));
+    memset(r->hlines, 0, sizeof(r->hlines));
+    memset(r->vars, 0, sizeof(r->vars));
+    memset(r->contenttype, 0, sizeof(r->contenttype));
+    memset(r->body, 0, sizeof(r->body));
+    memset(r->queryString, 0, sizeof(r->queryString));
+
+    memset(r->rl.type, 0, sizeof(r->rl.type));
+    memset(r->rl.path, 0, sizeof(r->rl.path));
+    memset(r->rl.http_v, 0, sizeof(r->rl.http_v));
+
     r->is_header_ready = 0;
     r->is_body_ready = 0;
     r->content_length = 0;
@@ -310,7 +322,7 @@ void resetParsingHeaderFlags(struct request *r){
 }
 
 
-void exhaustReceivingData(int sock, char *buffer){
+void exhaustReceivingData(int sock, char *buffer, int epoll){
 
     while (_keepAccepting) {
         //--------------------------CALL RECV AND FILL BUFFER-------------------------------//
@@ -325,6 +337,7 @@ void exhaustReceivingData(int sock, char *buffer){
         }
         if (bytes_read == 0) {
             if (verbose_flag) printf("Peer disconnected\n");
+            epoll_ctl(epoll, EPOLL_CTL_DEL, sock, NULL);
             close(sock);
             break;
         }
@@ -359,6 +372,8 @@ int countSeparateRequests(char* buffer){
 
 
 void separateRequests(char* buffer, char** separatedRequests, char* incompleteRequest, int counter){
+    char* bufferStart = buffer;
+    int bufferLength = strlen(buffer);
     char* bufferPtr;
     for(int i = 0; i < counter; ++i){
         bufferPtr = strstr(buffer, "\r\n\r\n");
@@ -368,7 +383,7 @@ void separateRequests(char* buffer, char** separatedRequests, char* incompleteRe
         buffer = bufferPtr + 4;
     }
 
-    if(!buffer){
+    if(buffer-bufferStart < bufferLength-1){
         strcpy(incompleteRequest, buffer);
     }
 }
@@ -377,23 +392,27 @@ void test(char *asdf){
     asdf = 10;
 }
 
-void handle_client(int sock, struct clientInfo  *c_info) {
+void handle_client(int sock, struct clientInfo  *c_info, int epoll) {
 
     printf("\nHANDLING CLIENT %i\n", sock);
 
 	unsigned char buffer[BUFFER_MAX];
     char** separatedRequests;
-    char* incompleteRequest;
+    //TODO: FREE THIS ONE
+    char incompleteRequest[BUFFER_MAX];
 
-    exhaustReceivingData(sock, &buffer[0]);
+    exhaustReceivingData(sock, &buffer[0], epoll);
     int requestNo = countSeparateRequests(&buffer[0]);
     separatedRequests = malloc(sizeof(char*) * requestNo);
-    separateRequests(&buffer[0], separatedRequests, incompleteRequest, requestNo);
+    separateRequests(&buffer[0], separatedRequests, &incompleteRequest[0], requestNo);
 
     //--------------------IF THERE IS NO FRAGMENTED LINE RESET REQUEST VALUES-------------------//
     if(!c_info->r.fragmented_line_waiting){
         resetParsingHeader(&c_info->r);
         resetParsingHeaderFlags(&c_info->r);
+    }
+    else{
+        printf("INCOMPLETE LINE: %s\n", c_info->r.incompleteLine);
     }
 
 
@@ -418,7 +437,7 @@ void handle_client(int sock, struct clientInfo  *c_info) {
         resetParsingHeaderFlags(&c_info->r);
     }
 
-    if(incompleteRequest){
+    if(strlen(incompleteRequest)>0){
         printf("  Header is not complete!\n");
         c_info->r.is_header_ready = 0;
         parseHeader(incompleteRequest, &c_info->r);
