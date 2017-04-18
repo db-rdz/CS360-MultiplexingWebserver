@@ -126,10 +126,15 @@ void consumeClient(void *args){
         nfds = epoll_wait(thread->epollfd, events, MAX_EVENTS, -1);
         printf("  Epoll %i got %i events\n", thread->epollfd, nfds);
         for(int i = 0; i < nfds; ++i){
-            events[i].data.fd;
-            struct clientInfo* cInfo = (struct clientInfo*) events[i].data.ptr;
-            printf("  Epoll %i got a request from %i\n", thread->epollfd, cInfo->clientfd);
-            handle_client(cInfo->clientfd, (struct clientInfo*) events[i].data.ptr, thread->epollfd);
+            if(events[i].events & EPOLLIN && !(events[i].events & EPOLLOUT)) {
+                events[i].data.fd;
+                struct clientInfo *cInfo = (struct clientInfo *) events[i].data.ptr;
+                printf("  Epoll %i got a request from %i\n", thread->epollfd, cInfo->clientfd);
+                handle_client(cInfo->clientfd, (struct clientInfo *) events[i].data.ptr, thread->epollfd);
+            }
+            else {
+                printf("I SEE! EPOLLET Switches between EPOLLIN and EPOLLOUT automatically!\n");
+            }
         }
     }
 }
@@ -268,7 +273,7 @@ int init_tcp(char* path, char* port, int verbose, int threadNo, int queueSize) {
         nextThreadIndex = poller + 1;
 
         threads[poller].epollfd;
-        ev.events = EPOLLIN;
+        ev.events = EPOLLIN | EPOLLET;
         ev.data.fd = conn_sock;
 
         //-------------CREATE AND INITIALIZE CLIENT INFO---------------//
@@ -372,8 +377,10 @@ int countSeparateRequests(char* buffer){
 
 
 void separateRequests(char* buffer, char** separatedRequests, char* incompleteRequest, int counter){
+    printf("counter:  %i \n", counter);
     char* bufferStart = buffer;
     int bufferLength = strlen(buffer);
+    printf("Buffer: %i, BufferStart: %i, BufferLen:  %i \n", buffer, bufferStart, bufferLength);
     char* bufferPtr;
     for(int i = 0; i < counter; ++i){
         bufferPtr = strstr(buffer, "\r\n\r\n");
@@ -382,6 +389,9 @@ void separateRequests(char* buffer, char** separatedRequests, char* incompleteRe
         strcpy(separatedRequests[i], buffer);
         buffer = bufferPtr + 4;
     }
+
+    printf("Buffer: %i, BufferStart: %i, BufferLen:  %i \n", buffer, bufferStart, bufferLength);
+    printf("Buffer-BufferStart = %i\n", buffer-bufferStart);
 
     if(buffer-bufferStart < bufferLength-1){
         strcpy(incompleteRequest, buffer);
@@ -397,6 +407,7 @@ void handle_client(int sock, struct clientInfo  *c_info, int epoll) {
     printf("\nHANDLING CLIENT %i\n", sock);
 
 	unsigned char buffer[BUFFER_MAX];
+    char *buffer_copy;
     char** separatedRequests;
     //TODO: FREE THIS ONE
     char incompleteRequest[BUFFER_MAX];
@@ -408,6 +419,8 @@ void handle_client(int sock, struct clientInfo  *c_info, int epoll) {
 
     //--------------------IF THERE IS NO FRAGMENTED LINE RESET REQUEST VALUES-------------------//
     if(!c_info->r.fragmented_line_waiting){
+        struct request r;
+        c_info->r = r;
         resetParsingHeader(&c_info->r);
         resetParsingHeaderFlags(&c_info->r);
     }
@@ -431,13 +444,12 @@ void handle_client(int sock, struct clientInfo  *c_info, int epoll) {
         }
 
         sanitize_path(&c_info->r);
-
         executeRequest(&c_info->r, sock);
         resetParsingHeader(&c_info->r);
         resetParsingHeaderFlags(&c_info->r);
     }
 
-    if(strlen(incompleteRequest)>0){
+    if(strlen(incompleteRequest)>1){
         printf("  Header is not complete!\n");
         c_info->r.is_header_ready = 0;
         parseHeader(incompleteRequest, &c_info->r);

@@ -90,9 +90,9 @@ int isBodyComplete(unsigned char buffer[BUFFER_MAX]){
 void parseRequestLine(char* currentLine, struct request *r){
     struct request_line parsing_request_line; //
     if (sscanf(currentLine, "%s %s %s",
-               parsing_request_line.type, parsing_request_line.path, parsing_request_line.http_v) == 3) {
+               r->rl.type, r->rl.path, r->rl.http_v) == 3) {
         r->first_line_read = 1;
-        r->rl = parsing_request_line;
+
     }
     else{
         if(verbose_flag) printf("INVALID REQUEST LINE\n");
