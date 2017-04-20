@@ -454,6 +454,8 @@ void handle_client(int sock, struct clientInfo  *c_info, int epoll) {
         c_info->r.is_header_ready = 0;
         parseHeader(incompleteRequest, &c_info->r);
         c_info->r.fragmented_line_waiting = 1;
+    }else{
+        memset(buffer, 0, BUFFER_MAX);
     }
 }
 
